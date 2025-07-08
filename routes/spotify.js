@@ -1,6 +1,7 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
+const { Server } = require('socket.io');
 require('dotenv').config();
 
 const clientId = process.env.SPOTIFY_CLIENT_ID;
@@ -9,8 +10,9 @@ const refreshToken = process.env.SPOTIFY_REFRESH_TOKEN;
 
 const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
-// Store connected clients for SSE
-const clients = new Set();
+// Store last known track info to avoid unnecessary broadcasts
+let lastTrackInfo = null;
+let spotifyInterval = null;
 
 async function getAccessToken() {
   try {
@@ -61,73 +63,66 @@ async function getCurrentPlayingTrack() {
   }
 }
 
-// Function to broadcast to all connected clients
-function broadcastToClients(data) {
-  clients.forEach(client => {
-    if (client.readyState === client.OPEN) {
-      client.write(`data: ${JSON.stringify(data)}\n\n`);
-    } else {
-      clients.delete(client);
+// Function to setup Spotify WebSocket functionality
+function setupSpotifyWebSocket(io) {
+  const spotifyNamespace = io.of('/spotify');
+  
+  spotifyNamespace.on('connection', (socket) => {
+    console.log('Client connected to Spotify WebSocket');
+    
+    // Send current track info immediately upon connection
+    getCurrentPlayingTrack().then(trackData => {
+      socket.emit('spotifyUpdate', trackData);
+    });
+    
+    // Start monitoring if this is the first client
+    if (spotifyNamespace.sockets.size === 1) {
+      startSpotifyMonitoring(spotifyNamespace);
     }
+    
+    socket.on('disconnect', () => {
+      console.log('Client disconnected from Spotify WebSocket');
+      
+      // Stop monitoring if no clients are connected
+      if (spotifyNamespace.sockets.size === 0) {
+        stopSpotifyMonitoring();
+      }
+    });
+    
+    socket.on('requestUpdate', async () => {
+      const trackData = await getCurrentPlayingTrack();
+      socket.emit('spotifyUpdate', trackData);
+    });
   });
 }
 
-// Store last known track info to avoid unnecessary broadcasts
-let lastTrackInfo = null;
-
-// Periodic check for Spotify updates (every 30 seconds)
-setInterval(async () => {
-  if (clients.size > 0) { // Only fetch if there are connected clients
+// Function to start Spotify monitoring
+function startSpotifyMonitoring(namespace) {
+  if (spotifyInterval) return; // Already running
+  
+  console.log('Starting Spotify monitoring...');
+  
+  spotifyInterval = setInterval(async () => {
     const currentTrack = await getCurrentPlayingTrack();
     
     // Only broadcast if track info has changed
     const currentTrackString = JSON.stringify(currentTrack);
     if (currentTrackString !== lastTrackInfo) {
       lastTrackInfo = currentTrackString;
-      broadcastToClients(currentTrack);
+      namespace.emit('spotifyUpdate', currentTrack);
+      console.log('Spotify update broadcasted:', currentTrack.isPlaying ? currentTrack.title : 'Not playing');
     }
+  }, 30000); // Check every 30 seconds
+}
+
+// Function to stop Spotify monitoring
+function stopSpotifyMonitoring() {
+  if (spotifyInterval) {
+    clearInterval(spotifyInterval);
+    spotifyInterval = null;
+    console.log('Spotify monitoring stopped');
   }
-}, 30000); // 30 seconds
-
-// SSE endpoint for real-time updates
-router.get('/now-playing-stream', async (req, res) => {
-  // Set SSE headers
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Cache-Control'
-  });
-
-  // Add client to the set
-  clients.add(res);
-
-  // Send initial data
-  const initialData = await getCurrentPlayingTrack();
-  res.write(`data: ${JSON.stringify(initialData)}\n\n`);
-
-  // Send keep-alive ping every 15 seconds
-  const keepAlive = setInterval(() => {
-    if (res.writableEnded) {
-      clearInterval(keepAlive);
-      return;
-    }
-    res.write(`: keep-alive\n\n`);
-  }, 15000);
-
-  // Handle client disconnect
-  req.on('close', () => {
-    clients.delete(res);
-    clearInterval(keepAlive);
-  });
-
-  req.on('error', (err) => {
-    console.error('SSE connection error:', err);
-    clients.delete(res);
-    clearInterval(keepAlive);
-  });
-});
+}
 
 // Keep the original endpoint for backward compatibility
 router.get('/now-playing', async (req, res) => {
@@ -169,4 +164,8 @@ router.get('/get-token', async (req, res) => {
   }
 });
 
-module.exports = router;
+// Export both router and setup function
+module.exports = {
+  router,
+  setupSpotifyWebSocket
+};

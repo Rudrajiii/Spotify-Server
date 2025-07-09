@@ -7,5 +7,5 @@ const app = express();
 app.use(cors());
 app.use('/api', spotifyRoutes);
 
-const PORT = 5000;
-app.listen(PORT, () => console.log(`==> Server running on http://localhost:${PORT}`));
+const port = process.env.PORT || 4000;
+app.listen(port, () => console.log(`==> Server running on http://localhost:${port}`));

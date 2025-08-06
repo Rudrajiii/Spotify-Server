@@ -21,18 +21,24 @@ router.get('/life-updates' , async(req , res) => {
       // Generate ETag based on content and last update time
     const contentString = JSON.stringify(formattedUpdates);
     const etag = `"${crypto.createHash('md5').update(contentString).digest('hex')}"`;
+    console.log("etag:" , etag);
     
     // Check if client has the same version
     const clientETag = req.headers['if-none-match'];
+    console.log("clientETag:" , clientETag);
     
     if (clientETag === etag) {
       // Content hasn't changed
+      console.log("✅ ETags match - returning 304");
       return res.status(304).end();
     }
     
-    // Set ETag header and send fresh data
-    res.set('ETag', etag);
-    res.set('Cache-Control', 'private, must-revalidate');
+    // Set headers before sending response
+    res.set({
+      'ETag': etag,
+      'Cache-Control': 'private, must-revalidate',
+      'Access-Control-Expose-Headers': 'ETag' // Additional fallback
+    });
     res.json(formattedUpdates);
     } catch (error) {
       console.error('Error fetching life updates:', error);

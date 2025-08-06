@@ -9,7 +9,15 @@ require('dotenv').config();
 const app = express();
 
 // Middleware
-app.use(cors());
+// Enhanced CORS configuration to expose ETag header
+const corsOptions = {
+  origin: ['http://localhost:5173', 'https://rudyy.vercel.app'], // Add your frontend URLs
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'If-None-Match'],
+  exposedHeaders: ['ETag', 'Cache-Control'], // Important: Expose ETag header
+  credentials: true
+};
+app.use(cors(corsOptions));
 app.use(express.json()); 
 
 // Call initialization after connection

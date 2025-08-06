@@ -4,6 +4,7 @@ const { LifeUpdate } = require('../database/mongoConnection');
 const router = express.Router();
 require('dotenv').config();
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 //endpoints to update life updates (admin only)
 router.get('/life-updates' , async(req , res) => {
@@ -17,7 +18,22 @@ router.get('/life-updates' , async(req , res) => {
         updatedAt: update.updatedAt
       }));
       
-      res.json(formattedUpdates);
+      // Generate ETag based on content and last update time
+    const contentString = JSON.stringify(formattedUpdates);
+    const etag = `"${crypto.createHash('md5').update(contentString).digest('hex')}"`;
+    
+    // Check if client has the same version
+    const clientETag = req.headers['if-none-match'];
+    
+    if (clientETag === etag) {
+      // Content hasn't changed
+      return res.status(304).end();
+    }
+    
+    // Set ETag header and send fresh data
+    res.set('ETag', etag);
+    res.set('Cache-Control', 'private, must-revalidate');
+    res.json(formattedUpdates);
     } catch (error) {
       console.error('Error fetching life updates:', error);
       res.status(500).json({ error: 'Failed to fetch life updates' });
@@ -78,6 +94,11 @@ router.put('/life-updates' , async (req , res) => {
       updatedAt: update.updatedAt
     }));
     
+    // Generate new ETag for updated content
+    const contentString = JSON.stringify(formattedUpdates);
+    const etag = `"${crypto.createHash('md5').update(contentString).digest('hex')}"`;
+    
+    res.set('ETag', etag);
     res.json({
       message: `Successfully updated ${validUpdates.length} life update(s)`,
       updates: formattedUpdates

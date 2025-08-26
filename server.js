@@ -8,23 +8,36 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware
-// Enhanced CORS configuration to expose ETag header
+/**
+ * @all {middlewares}
+ * @cors setup
+ */
 const corsOptions = {
-  origin: ['http://localhost:5173', 'https://rudyy.vercel.app'], // Add your frontend URLs
+  origin: ['http://localhost:5173', 'https://rudyy.vercel.app'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'If-None-Match'],
-  exposedHeaders: ['ETag', 'Cache-Control'], // Important: Expose ETag header
+  exposedHeaders: ['ETag', 'Cache-Control'],
   credentials: true
 };
 app.use(cors(corsOptions));
 app.use(express.json()); 
 
-// Call initialization after connection
+/**
+ * @defaultUpdates {initializeDefaultUpdates}
+ * @description Initializes default life updates if none exist
+ */
 mongoose.connection.once('open', initializeDefaultUpdates);
-// Spotify routes
+
+
+/**
+ * @routes {all routers}
+ * @spotify {spotifyRoutes}
+ * @description Routes for Spotify-related functionality
+ * @admin {adminRoutes}
+ * @description Routes for Admin-related functionality
+ */
+
 app.use('/api', spotifyRoutes);
-// Admin routes
 app.use('/admin', adminRoutes);
 
 const port = process.env.PORT || 4000;

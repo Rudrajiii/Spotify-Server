@@ -21,10 +21,10 @@ const initializeDefaultUpdates = async () => {
       ];
       
       await LifeUpdate.insertMany(defaultUpdates);
-      console.log('✅ Default life updates initialized');
+      console.log('> Default life updates initialized');
     }
   } catch (error) {
-    console.error('❌ Error initializing default updates:', error);
+    console.error('> Error initializing default updates:', error);
   }
 };
 

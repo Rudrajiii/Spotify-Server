@@ -11,7 +11,7 @@ router.get('/life-updates' , async(req , res) => {
   try {
       const updates = await LifeUpdate.find().sort({ updateNumber: 1 });
       
-      // Format for frontend compatibility
+      
       const formattedUpdates = updates.map(update => ({
         id: update.updateNumber,
         text: update.text,
@@ -29,7 +29,7 @@ router.get('/life-updates' , async(req , res) => {
     
     if (clientETag === etag) {
       // Content hasn't changed
-      console.log("✅ ETags match - returning 304");
+      console.log("ETags match - returning 304");
       return res.status(304).end();
     }
     
@@ -37,7 +37,7 @@ router.get('/life-updates' , async(req , res) => {
     res.set({
       'ETag': etag,
       'Cache-Control': 'private, must-revalidate',
-      'Access-Control-Expose-Headers': 'ETag' // Additional fallback
+      'Access-Control-Expose-Headers': 'ETag' 
     });
     res.json(formattedUpdates);
     } catch (error) {

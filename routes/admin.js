@@ -1,17 +1,41 @@
 const express = require('express');
 const { initializeDefaultUpdates } = require('../database/defaultUpdates');
-const { LifeUpdate } = require('../database/mongoConnection');
+const LifeUpdate  = require('../models/lifeUpdates');
+const Admin = require('../models/adminModel');
 const router = express.Router();
 require('dotenv').config();
 const mongoose = require('mongoose');
 const crypto = require('crypto');
-
+const { createAdminToken , getAdmin } = require("../services/authService")
+const { checkForAuthentication } = require("../middlewares/auth-middleware");
 //endpoints to update life updates (admin only)
-router.get('/life-updates' , async(req , res) => {
+
+router.post("/" , async (req , res) => {
+    const adminData = req.body;
+    if (!adminData) return res.status(404).json({msg : "provide your username and admin id"});
+
+    const {username ,adminId, role} = adminData;
+
+    if (!username || !adminId || !role) return res.status(404).json({msg : "missing credes.."});
+    if (role !== "ADMIN") return res.status(401).json({msg:"Only Admins Can Log in"});
+
+    const admin = await Admin.findOne({adminId , username});
+
+    if(!admin) return res.status(404).json({msg:"Invalid Creds..."})
+    
+    const adminPayload = {username , role};
+
+    const token = createAdminToken(adminPayload);
+    return res.status(201).json({
+      token:token,
+      type:"Bearer"
+    }
+    );
+});  
+
+router.get('/life-updates' , checkForAuthentication , async(req , res) => {
   try {
       const updates = await LifeUpdate.find().sort({ updateNumber: 1 });
-      
-      
       const formattedUpdates = updates.map(update => ({
         id: update.updateNumber,
         text: update.text,
@@ -46,16 +70,9 @@ router.get('/life-updates' , async(req , res) => {
     }
 });
 
-router.put('/life-updates' , async (req , res) => {
+router.put('/life-updates' ,checkForAuthentication , async (req , res) => {
   try {
-    const { key, updates } = req.body;
-    
-    // Validate admin key
-    const adminKey = process.env.ADMIN_KEY || '123456';
-    if (key !== adminKey) {
-      return res.status(401).json({ error: 'Invalid access key' });
-    }
-    
+    const { updates } = req.body;
     // Validate that at least one update is provided and not empty
     if (!updates || !Array.isArray(updates) || updates.length === 0) {
       return res.status(400).json({ error: 'Updates array is required' });
@@ -116,16 +133,8 @@ router.put('/life-updates' , async (req , res) => {
   }
 });
 
-router.delete('/life-updates' , async(req , res) => {
+router.delete('/life-updates' , checkForAuthentication , async(req , res) => {
   try {
-    const { key } = req.body;
-    
-    // Validate admin key
-    const adminKey = process.env.ADMIN_KEY || '123456';
-    if (key !== adminKey) {
-      return res.status(401).json({ error: 'Invalid access key' });
-    }
-    
     // Delete all existing updates
     await LifeUpdate.deleteMany({});
     

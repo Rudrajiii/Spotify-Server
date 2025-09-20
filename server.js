@@ -3,6 +3,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const spotifyRoutes = require('./routes/spotify');
 const adminRoutes = require('./routes/admin');
+require('./database/mongoConnection');
 const { initializeDefaultUpdates } = require('./database/defaultUpdates');
 require('dotenv').config();
 

@@ -1,4 +1,4 @@
-const { LifeUpdate } = require('./mongoConnection');
+const LifeUpdate = require('../models/lifeUpdates');
 
 const initializeDefaultUpdates = async () => {
   try {

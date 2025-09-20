@@ -3,6 +3,7 @@ const cors = require('cors');
 const mongoose = require('mongoose');
 const spotifyRoutes = require('./routes/spotify');
 const adminRoutes = require('./routes/admin');
+const publicRoutes = require('./routes/public');
 require('./database/mongoConnection');
 const { initializeDefaultUpdates } = require('./database/defaultUpdates');
 require('dotenv').config();
@@ -45,6 +46,7 @@ mongoose.connection.once('open', initializeDefaultUpdates);
 
 app.use('/api', spotifyRoutes);
 app.use('/admin', adminRoutes);
+app.use("/public" , publicRoutes);
 
 const port = process.env.PORT || 4000;
 app.listen(port, () => console.log(`==> Server running on http://localhost:${port}`));

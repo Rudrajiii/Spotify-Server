@@ -1,9 +1,6 @@
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
-require('./database/mongoConnection');
-const { initializeDefaultUpdates } = require('./database/defaultUpdates');
-require('dotenv').config();
 
 const spotifyRoutes = require('./routes/spotify');
 const adminRoutes = require('./routes/admin');
@@ -23,6 +20,10 @@ const helmet = require('helmet'); // Security middleware
 const morgan = require('morgan'); // Logging middleware
 const rateLimit = require('express-rate-limit'); // Rate limiting
 const compression = require('compression'); // Response compression
+
+require('./database/mongoConnection');
+const { initializeDefaultUpdates } = require('./database/defaultUpdates');
+require('dotenv').config();
 
 const app = express();
 

@@ -46,7 +46,7 @@ router.get('/health' , (req , res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    environment: process.env.PRODUCTION === 'true' ? 'production' : 'development'
+    environment: process.env.PRODUCTION === 'true' ? 'Production' : 'Development'
   });
 });
 

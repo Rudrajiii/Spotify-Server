@@ -15,6 +15,7 @@ const generateRandomReqId = require('./middlewares/generate-random-req-id-middle
 const corsOptions = require('./Objects/cors-object');
 const securityObject = require('./Objects/security-object');
 const rateLimitObject = require('./Objects/rate-limit-object');
+const compressionObject = require('./Objects/compression-object');
 
 const helmet = require('helmet'); // Security middleware
 const morgan = require('morgan'); // Logging middleware
@@ -31,13 +32,14 @@ const app = express();
  * @security {helmet}
  * @description Security middleware for setting various HTTP headers
  */
-app.use(helmet(securityObject()));
+// app.use(helmet(securityObject()));
 
 /**
  * @compression {compression}
  * @description Compress response bodies for better performance
+ * @note Exclude SSE routes to prevent buffering issues
  */
-app.use(compression());
+app.use(compression(compressionObject));
 
 /**
  * @logging {morgan}

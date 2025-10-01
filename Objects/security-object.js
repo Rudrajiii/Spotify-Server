@@ -1,5 +1,4 @@
-function securityObject() {
-  return {
+const securityObject = {
     crossOriginEmbedderPolicy: false,
     contentSecurityPolicy: {
       directives: {
@@ -9,7 +8,7 @@ function securityObject() {
           "'unsafe-inline'",
           "https://fonts.googleapis.com",
           "https://fonts.gstatic.com",
-          "https://cdnjs.cloudflare.com", // If you use any CDN stylesheets
+          "https://cdnjs.cloudflare.com", 
         ],
         fontSrc: [
           "'self'",
@@ -19,30 +18,30 @@ function securityObject() {
         ],
         scriptSrc: [
           "'self'",
-          "'unsafe-inline'", // Only if you have inline scripts
+          "'unsafe-inline'", 
         ],
         imgSrc: [
           "'self'",
           "data:",
           "https:",
           "blob:",
-          "https://i.scdn.co", // Spotify album covers
-          "https://mosaic.scdn.co", // Spotify playlist images
-          "https://lineup-images.scdn.co", // Spotify artist images
+          "https://i.scdn.co", 
+          "https://mosaic.scdn.co", 
+          "https://lineup-images.scdn.co", 
         ],
         connectSrc: [
           "'self'",
           "https://api.spotify.com",
           "https://accounts.spotify.com",
-          "wss:", // For WebSocket connections if you use any
+          "wss:", 
         ],
         mediaSrc: ["'self'", "https:", "blob:"],
         frameSrc: [
           "'self'",
-          "https://open.spotify.com", // If you embed Spotify players
+          "https://open.spotify.com", 
         ],
       },
     },
-  };
-}
+};
+
 module.exports = securityObject;

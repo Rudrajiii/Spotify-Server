@@ -32,7 +32,7 @@ const app = express();
  * @security {helmet}
  * @description Security middleware for setting various HTTP headers
  */
-// app.use(helmet(securityObject()));
+app.use(helmet(securityObject));
 
 /**
  * @compression {compression}

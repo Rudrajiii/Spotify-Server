@@ -8,6 +8,9 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 const { createAdminToken , getAdmin } = require("../services/authService")
 const { checkForAuthentication } = require("../middlewares/auth-middleware");
+const publicRoutes = require('./public');
+
+
 //endpoints to update life updates (admin only)
 
 router.post("/" , async (req , res) => {
@@ -21,7 +24,7 @@ router.post("/" , async (req , res) => {
 
     const admin = await Admin.findOne({adminId , username});
 
-    if(!admin) return res.status(404).json({msg:"Invalid Creds..."})
+    if(!admin) return res.status(404).json({msg:"Invalid Creds..."});
     
     const adminPayload = {username , role};
 
@@ -96,6 +99,15 @@ router.put('/life-updates' ,checkForAuthentication , async (req , res) => {
       updatedAt: update.updatedAt
     }));
     
+
+    /**
+     * @use - Invalidate cache after updates for generating new ETag of fresh content
+     * @reason - Ensure clients get fresh data on next request
+     * @method - Call invalidateLifeUpdatesCache from public routes
+     */
+    await publicRoutes.invalidateLifeUpdatesCache();
+    console.log("🗑️ Cache invalidated after UPDATE");
+
     // Generate new ETag for updated content
     const contentString = JSON.stringify(formattedUpdates);
     const etag = `"${crypto.createHash('md5').update(contentString).digest('hex')}"`;
@@ -127,6 +139,10 @@ router.delete('/life-updates' , checkForAuthentication , async(req , res) => {
       text: update.text,
       updatedAt: update.updatedAt
     }));
+
+    // Invalidate cache after reset
+    await publicRoutes.invalidateLifeUpdatesCache();
+    console.log("🗑️ Cache invalidated after DELETE");
     
     res.json({
       message: 'Life updates reset to defaults',

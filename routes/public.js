@@ -1,52 +1,87 @@
-const express = require('express');
-const LifeUpdate  = require('../models/lifeUpdates');
+const express = require("express");
+const LifeUpdate = require("../models/lifeUpdates");
 const router = express.Router();
-const crypto = require('crypto');
+const crypto = require("crypto");
+const storage = require("node-persist");
+const initializeStorage = require("../config/storage-config");
 
-router.get('/life-updates' , async(req , res) => {
+/**
+ * @use {node-persist} for caching
+ * @function {initializeStorage}
+ * @description Initialize persistent storage for caching
+ */
+initializeStorage();
+
+router.get("/life-updates", async (req, res) => {
   try {
-      const updates = await LifeUpdate.find().sort({ updateNumber: 1 });
-      const formattedUpdates = updates.map(update => ({
-        id: update.updateNumber,
-        text: update.text,
-        updatedAt: update.updatedAt
-      }));
-      
-      // Generate ETag based on content and last update time
-    const contentString = JSON.stringify(formattedUpdates);
-    const etag = `"${crypto.createHash('md5').update(contentString).digest('hex')}"`;
-    console.log("etag:" , etag);
+    /**
+     * @etag {caching mechanism both in client and server side}
+     * @use ETag and If-None-Match headers for efficient caching
+     * @description Reduce database load and improve response times
+     * @flow
+     * 1. Client sends request with If-None-Match header
+     * 2. Server checks cached ETag
+     * 3. If match, return 304 Not Modified - 0 database call
+     * 4. If no match, fetch from DB, generate new ETag, cache it, and send data to client
+     * 5. Client caches response with new ETag
+     * 6. Subsequent requests use If-None-Match to validate cache
+     * @benefits
+     * - Reduces database load
+     * - Improves response times for clients
+     * - Saves bandwidth by avoiding sending unchanged data
+     * @note ETag is based on content hash and last update time
+     */
     
-    // Check if client has the same version
-    const clientETag = req.headers['if-none-match'];
-    console.log("clientETag:" , clientETag);
+    const clientETag = req.headers["if-none-match"];
     
-    if (clientETag === etag) {
-      // Content hasn't changed
-      console.log("ETags match - returning 304");
+    const cachedETag = await storage.getItem("lifeUpdates:etag");
+
+    if (cachedETag && clientETag === cachedETag) {
       return res.status(304).end();
     }
-    
-    // Set headers before sending response
+
+    const updates = await LifeUpdate.find().sort({ updateNumber: 1 });
+    const formattedUpdates = updates.map((update) => ({
+      id: update.updateNumber,
+      text: update.text,
+      updatedAt: update.updatedAt,
+    }));
+
+    const contentString = JSON.stringify(formattedUpdates);
+    const newEtag = `"${crypto
+      .createHash("md5")
+      .update(contentString)
+      .digest("hex")}"`;
+
+    await storage.setItem("lifeUpdates:etag", newEtag);
+    await storage.setItem("lifeUpdates:lastUpdated", new Date().toISOString());
+
     res.set({
-      'ETag': etag,
-      'Cache-Control': 'private, must-revalidate',
-      'Access-Control-Expose-Headers': 'ETag' 
+      ETag: newEtag,
+      "Cache-Control": "private, must-revalidate",
+      "Access-Control-Expose-Headers": "ETag",
     });
     res.json(formattedUpdates);
-    } catch (error) {
-      console.error('Error fetching life updates:', error);
-      res.status(500).json({ error: 'Failed to fetch life updates' });
-    }
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch life updates" });
+  }
 });
 
-router.get('/health' , (req , res) => {
+const invalidateLifeUpdatesCache = async () => {
+  await storage.removeItem("lifeUpdates:etag");
+  await storage.removeItem("lifeUpdates:lastUpdated");
+};
+
+router.invalidateLifeUpdatesCache = invalidateLifeUpdatesCache;
+
+router.get("/health", (req, res) => {
   res.status(200).json({
-    status: 'OK',
+    status: "OK",
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    environment: process.env.PRODUCTION === 'true' ? 'Production' : 'Development'
+    environment:
+      process.env.PRODUCTION === "true" ? "Production" : "Development",
   });
 });
 

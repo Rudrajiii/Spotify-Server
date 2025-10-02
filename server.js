@@ -121,7 +121,6 @@ app.listen(port, () => {
   console.log(`==> Server running on http://localhost:${port}`);
   console.log(`==> Environment: ${process.env.PRODUCTION === 'true' ? 'Production' : 'Development'}`);
   console.log(`==> Health check: http://localhost:${port}/public/health`);
-
 });
 
 process.on('SIGTERM', () => {

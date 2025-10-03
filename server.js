@@ -24,9 +24,18 @@ const compression = require('compression'); // Response compression
 
 require('./database/mongoConnection');
 const { initializeDefaultUpdates } = require('./database/defaultUpdates');
+const { MongooseError } = require('./ErrorTypes/AppErrors');
 require('dotenv').config();
 
 const app = express();
+const isProduction = process.env.PRODUCTION === 'true';
+
+/**
+ * @middleware {trust-proxy}
+ * @description Enable trust proxy for production deployment
+ * @note Required for accurate IP detection behind Render's reverse proxy
+ */
+isProduction ? app.set('trust proxy', 1) : app.set('trust proxy', 0);
 
 /**
  * @security {helmet}
@@ -45,7 +54,6 @@ app.use(compression(compressionObject));
  * @logging {morgan}
  * @description HTTP request logger middleware
  */
-const isProduction = process.env.PRODUCTION === 'true';
 app.use(morgan(isProduction ? 'combined' : 'dev'));
 
 /**
@@ -123,10 +131,20 @@ app.listen(port, () => {
   console.log(`==> Health check: http://localhost:${port}/public/health`);
 });
 
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully');
-  mongoose.connection.close(() => {
-    console.log('MongoDB connection closed');
+  const isProduction = process.env.PRODUCTION === "true";
+  try{
+    await mongoose.connection.close();
+    console.log('==> MongoDB connection closed');
     process.exit(0);
-  });
+  } catch (error) {
+    const dbError = new MongooseError(
+      isProduction ? "Internal Server Error" : error.message,
+      { details: isProduction ? null : error.stack }
+    );
+
+    console.log("Error during MongoDB disconnection:", dbError);
+    process.exit(1);
+  }
 });

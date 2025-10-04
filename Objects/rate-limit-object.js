@@ -1,15 +1,15 @@
 const { ipKeyGenerator } = require('express-rate-limit'); 
 
 const rateLimitObject = {
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 5000, // Limit each IP to 5000 requests per windowMs
   message: {
     error: 'Too many requests from this IP, please try again later.',
-    retryAfter: '15 minutes'
+    retryAfter: '10 minutes'
   },
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req, res) => {
+  keyGenerator: (req, _) => {
  		if (req.query.apiKey) return req.query.apiKey
 
  		// fallback to IP for unauthenticated users

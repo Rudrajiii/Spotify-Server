@@ -10,7 +10,6 @@ const { createAdminToken , getAdmin } = require("../services/authService")
 const { checkForAuthentication } = require("../middlewares/auth-middleware");
 const publicRoutes = require('./public');
 
-
 //endpoints to update life updates (admin only)
 
 router.post("/" , async (req , res) => {
